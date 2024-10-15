@@ -108,7 +108,7 @@ The AI Agent State Library supports advanced features such as:
 - Searching for similar states using vector embeddings
 - Visualizing complex state machines
 
-For examples of advanced usage, check out the [examples directory](link-to-examples-directory) in the repository.
+For examples of advanced usage, check out the [examples directory](/examples) in the repository.
 
 ## Contributing
 
@@ -116,7 +116,7 @@ We welcome contributions to the AI Agent State Library! Please read our [contrib
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](link-to-license-file) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 
 
