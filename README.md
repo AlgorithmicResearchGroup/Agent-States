@@ -59,21 +59,37 @@ Make sure you have the following dependencies installed:
 
 ## Quick Start
 
-Here's a simple example to get you started with the AI Agent State Library:
+Here's a simple example to get you started with the AI Agent State Library. This example shows how to create a state machine and specify the OpenAI model to be used:
 
 ```python
 import uuid
-from ai_agent_state import State, StateData, StateMachine, Transition, ChromaStateManager
+from ai_agent_state import State, StateData, StateMachine, Transition
 
 # Define states
 states = [
-    State(id=str(uuid.uuid4()), name='initialize', data=StateData(data={'message': 'Initializing AI agent...'})),
-    State(id=str(uuid.uuid4()), name='process', data=StateData(data={'message': 'Processing task...'})),
-    State(id=str(uuid.uuid4()), name='idle', data=StateData(data={'message': 'Waiting for next task...'})),
+    State(
+        id=str(uuid.uuid4()),
+        name='initialize',
+        data=StateData(data={'message': 'Initializing AI agent...'})
+    ),
+    State(
+        id=str(uuid.uuid4()),
+        name='process',
+        data=StateData(data={'message': 'Processing task...'})
+    ),
+    State(
+        id=str(uuid.uuid4()),
+        name='idle',
+        data=StateData(data={'message': 'Waiting for next task...'})
+    ),
 ]
 
-# Create the state machine
-state_machine = StateMachine(name='SimpleAIAgent', initial_state=states[0])
+# Create the state machine and specify the model name
+state_machine = StateMachine(
+    name='SimpleAIAgent',
+    initial_state=states[0],
+    model_name='gpt-3.5-turbo'  # Replace with your desired model
+)
 
 # Add states to the state machine
 for state in states:
@@ -90,7 +106,8 @@ print(f"Current State: {state_machine.current_state.name}")
 state_machine.trigger_transition("Finish processing")
 print(f"Current State: {state_machine.current_state.name}")
 
-# Save the state machine
+# Save the state machine (optional)
+from ai_agent_state import ChromaStateManager
 chroma_manager = ChromaStateManager(persist_directory="chroma_db")
 chroma_manager.save_state_machine(state_machine)
 ```
@@ -109,6 +126,252 @@ The AI Agent State Library supports advanced features such as:
 - Visualizing complex state machines
 
 For examples of advanced usage, check out the [examples directory](/examples) in the repository.
+
+## Example Use Case
+
+Here's an example of how to use this library to create an AI agent that manages customer support interactions. This example includes passing in the model during the state machine creation:
+
+```python
+import os
+import uuid
+from dotenv import load_dotenv
+from ai_agent_state import State, StateData, StateMachine, Transition
+
+# Load API key from environment variables (ensure you have set OPENAI_API_KEY)
+load_dotenv()
+
+# Define states
+welcome_state = State(
+    id=str(uuid.uuid4()),
+    name='Welcome',
+    data=StateData(data={'message': 'Welcome to E-Shop! How can I assist you today?'})
+)
+
+main_menu_state = State(
+    id=str(uuid.uuid4()),
+    name='MainMenu',
+    data=StateData(data={'message': 'Please choose an option: Order Tracking, Returns and Refunds, Product Inquiry, Account Management, or type "exit" to quit.'})
+)
+
+order_tracking_state = State(
+    id=str(uuid.uuid4()),
+    name='OrderTracking',
+    data=StateData(data={'task': 'Assisting with order tracking...'})
+)
+
+collect_order_number_state = State(
+    id=str(uuid.uuid4()),
+    name='CollectOrderNumber',
+    data=StateData(data={'message': 'Please provide your order number.'})
+)
+
+provide_order_status_state = State(
+    id=str(uuid.uuid4()),
+    name='ProvideOrderStatus',
+    data=StateData(data={'task': 'Providing order status...'})
+)
+
+returns_refunds_state = State(
+    id=str(uuid.uuid4()),
+    name='ReturnsAndRefunds',
+    data=StateData(data={'task': 'Assisting with returns and refunds...'})
+)
+
+product_inquiry_state = State(
+    id=str(uuid.uuid4()),
+    name='ProductInquiry',
+    data=StateData(data={'task': 'Answering product inquiries...'})
+)
+
+account_management_state = State(
+    id=str(uuid.uuid4()),
+    name='AccountManagement',
+    data=StateData(data={'task': 'Assisting with account management...'})
+)
+
+goodbye_state = State(
+    id=str(uuid.uuid4()),
+    name='Goodbye',
+    data=StateData(data={'message': 'Thank you for visiting E-Shop! Have a great day!'})
+)
+
+# Create the state machine with a specified model
+state_machine = StateMachine(
+    name='CustomerSupportAssistant',
+    initial_state=welcome_state,
+    model_name='gpt-3.5-turbo'  # Replace with your desired model
+)
+
+# Add states to the state machine
+state_machine.add_state(main_menu_state)
+state_machine.add_state(order_tracking_state)
+state_machine.add_state(collect_order_number_state)
+state_machine.add_state(provide_order_status_state)
+state_machine.add_state(returns_refunds_state)
+state_machine.add_state(product_inquiry_state)
+state_machine.add_state(account_management_state)
+state_machine.add_state(goodbye_state)
+
+# Define transitions
+transitions = [
+    Transition(from_state='Welcome', to_state='MainMenu'),
+    Transition(from_state='MainMenu', to_state='OrderTracking'),
+    Transition(from_state='OrderTracking', to_state='CollectOrderNumber'),
+    Transition(from_state='CollectOrderNumber', to_state='ProvideOrderStatus'),
+    Transition(from_state='ProvideOrderStatus', to_state='MainMenu'),
+    Transition(from_state='MainMenu', to_state='ReturnsAndRefunds'),
+    Transition(from_state='MainMenu', to_state='ProductInquiry'),
+    Transition(from_state='MainMenu', to_state='AccountManagement'),
+    Transition(from_state='MainMenu', to_state='Goodbye'),
+    Transition(from_state='ReturnsAndRefunds', to_state='MainMenu'),
+    Transition(from_state='ProductInquiry', to_state='MainMenu'),
+    Transition(from_state='AccountManagement', to_state='MainMenu'),
+]
+
+# Add transitions to the state machine
+for transition in transitions:
+    state_machine.add_transition(transition)
+
+# Implement action functions
+def fetch_order_status(order_number: str) -> str:
+    # Simulate fetching order status from a database
+    return f"Order {order_number} is currently in transit and will be delivered in 2 days."
+
+def handle_returns_and_refunds():
+    return "I've initiated the return process for you. Please check your email for further instructions."
+
+def answer_product_inquiry():
+    return "The product you're interested in is available in multiple colors and sizes."
+
+def assist_account_management():
+    return "Your account settings have been updated as per your request."
+
+def main():
+    print(f"Current State: {state_machine.current_state.name}")
+    print(state_machine.current_state.data.data['message'])
+
+    while True:
+        user_input = input("You: ")
+
+        if not user_input.strip():
+            continue  # Skip empty input
+
+        # Before triggering transition, print current state
+        print(f"\n[Before Transition] Current State: {state_machine.current_state.name}")
+
+        # Exit the loop if the user wants to quit
+        if user_input.lower() in ['exit', 'quit', 'goodbye']:
+            state_machine.current_state = goodbye_state
+            print(state_machine.current_state.data.data['message'])
+            break
+
+        state_machine.trigger_transition(user_input)
+
+        # After triggering transition, print new state
+        print(f"[After Transition] Current State: {state_machine.current_state.name}")
+
+        # Update state history
+        state_machine.state_history.append(state_machine.current_state.name)
+        print(f"State History: {' -> '.join(state_machine.state_history)}")
+
+        # After the transition, print the assistant's response
+        if state_machine.conversation_history:
+            last_turn = state_machine.conversation_history[-1]
+            assistant_response = last_turn.get('assistant_response', '')
+            if assistant_response:
+                print(f"Assistant: {assistant_response}")
+
+        # Perform any actions associated with the current state
+        if state_machine.current_state.name == 'ProvideOrderStatus':
+            # Assume we stored the order_number in metadata
+            order_number = "123456"  # Replace with actual order number logic
+            status_message = fetch_order_status(order_number)
+            print(f"Action: {status_message}")
+        elif state_machine.current_state.name == 'ReturnsAndRefunds':
+            result_message = handle_returns_and_refunds()
+            print(f"Action: {result_message}")
+        elif state_machine.current_state.name == 'ProductInquiry':
+            result_message = answer_product_inquiry()
+            print(f"Action: {result_message}")
+        elif state_machine.current_state.name == 'AccountManagement':
+            result_message = assist_account_management()
+            print(f"Action: {result_message}")
+        elif state_machine.current_state.name == 'Goodbye':
+            print(state_machine.current_state.data.data['message'])
+            break
+
+    # Optionally, after exiting, print the final state history
+    print("\nFinal State History:")
+    print(" -> ".join(state_machine.state_history))
+
+# Run the main function
+if __name__ == '__main__':
+    main()
+```
+
+**Explanation of the Example:**
+
+- **State Definitions:**
+  - We define several states representing different stages of the customer support interaction, such as `Welcome`, `MainMenu`, `OrderTracking`, `ProvideOrderStatus`, etc.
+
+- **State Machine Initialization:**
+  - We create a `StateMachine` instance, specifying the initial state and the OpenAI model to use.
+
+- **Adding States and Transitions:**
+  - All states and transitions are added to the state machine. Transitions define how the state machine moves from one state to another based on the conversation flow.
+
+- **Action Functions:**
+  - Functions like `fetch_order_status`, `handle_returns_and_refunds`, etc., simulate backend operations that would occur in a real-world scenario.
+
+- **Main Conversation Loop:**
+  - The `main` function runs an interactive loop where the user can input messages, and the assistant responds accordingly.
+  - The assistant uses the OpenAI model specified to process messages and determine state transitions.
+
+- **State Management:**
+  - The state machine keeps track of the current state and moves to the next state based on user input and OpenAI's decision-making.
+  - Actions associated with each state are performed when the state is active.
+
+**Sample Interaction:**
+
+```plaintext
+Current State: Welcome
+Welcome to E-Shop! How can I assist you today?
+You: I'd like to track my order.
+
+[Before Transition] Current State: Welcome
+Assistant Response: Sure, I can help you with order tracking. Please provide your order number.
+[After Transition] Current State: CollectOrderNumber
+State History: Welcome -> CollectOrderNumber
+You: My order number is 123456.
+
+[Before Transition] Current State: CollectOrderNumber
+Assistant Response: Thank you! Retrieving the status of your order now.
+[After Transition] Current State: ProvideOrderStatus
+State History: Welcome -> CollectOrderNumber -> ProvideOrderStatus
+Action: Order 123456 is currently in transit and will be delivered in 2 days.
+You: Great, thanks!
+
+[Before Transition] Current State: ProvideOrderStatus
+Assistant Response: You're welcome! Is there anything else I can assist you with?
+[After Transition] Current State: MainMenu
+State History: Welcome -> CollectOrderNumber -> ProvideOrderStatus -> MainMenu
+You: No, that's all.
+
+[Before Transition] Current State: MainMenu
+Assistant Response: Thank you for visiting E-Shop! Have a great day!
+[After Transition] Current State: Goodbye
+State History: Welcome -> CollectOrderNumber -> ProvideOrderStatus -> MainMenu -> Goodbye
+
+Final State History:
+Welcome -> CollectOrderNumber -> ProvideOrderStatus -> MainMenu -> Goodbye
+```
+
+**Note:**
+
+- In a real implementation, the assistant's responses and state transitions are determined by the OpenAI model based on your inputs.
+- Ensure that you have set the `OPENAI_API_KEY` in your environment variables or appropriately in your code.
+- Replace `'gpt-3.5-turbo'` with your desired OpenAI model.
+- The action functions simulate backend processes and should be replaced with actual logic in a production environment.
 
 ## Contributing
 
@@ -171,53 +434,246 @@ Manages the persistence and retrieval of state machines using ChromaDB.
 
 ## Example Use Case
 
-Here's an example of how to use this library to create an AI agent that manages tasks:
+Here's an example of how to use this library to create an AI agent that manages customer support interactions. This example includes passing in the model during the state machine creation:
 
 ```python
+import os
 import uuid
-from ai_agent_state import State, StateData, StateMachine, Transition, ChromaStateManager
+from dotenv import load_dotenv
+from ai_agent_state import State, StateData, StateMachine, Transition
+
+# Load API key from environment variables (ensure you have set OPENAI_API_KEY)
+load_dotenv()
 
 # Define states
-states = [
-    State(id=str(uuid.uuid4()), name='initialize', data=StateData(data={'message': 'Initializing AI agent...'})),
-    State(id=str(uuid.uuid4()), name='select_task', data=StateData(data={'message': 'Selecting next task...'})),
-    State(id=str(uuid.uuid4()), name='execute_task', data=StateData(data={'message': 'Executing task...'})),
-    State(id=str(uuid.uuid4()), name='review_outcome', data=StateData(data={'message': 'Reviewing task outcome...'})),
-    State(id=str(uuid.uuid4()), name='idle', data=StateData(data={'message': 'All tasks complete. Waiting for new tasks...'})),
-]
+welcome_state = State(
+    id=str(uuid.uuid4()),
+    name='Welcome',
+    data=StateData(data={'message': 'Welcome to E-Shop! How can I assist you today?'})
+)
 
-# Create the state machine
-state_machine = StateMachine(name='AITaskManager', initial_state=states[0])
+main_menu_state = State(
+    id=str(uuid.uuid4()),
+    name='MainMenu',
+    data=StateData(data={'message': 'Please choose an option: Order Tracking, Returns and Refunds, Product Inquiry, Account Management, or type "exit" to quit.'})
+)
+
+order_tracking_state = State(
+    id=str(uuid.uuid4()),
+    name='OrderTracking',
+    data=StateData(data={'task': 'Assisting with order tracking...'})
+)
+
+collect_order_number_state = State(
+    id=str(uuid.uuid4()),
+    name='CollectOrderNumber',
+    data=StateData(data={'message': 'Please provide your order number.'})
+)
+
+provide_order_status_state = State(
+    id=str(uuid.uuid4()),
+    name='ProvideOrderStatus',
+    data=StateData(data={'task': 'Providing order status...'})
+)
+
+returns_refunds_state = State(
+    id=str(uuid.uuid4()),
+    name='ReturnsAndRefunds',
+    data=StateData(data={'task': 'Assisting with returns and refunds...'})
+)
+
+product_inquiry_state = State(
+    id=str(uuid.uuid4()),
+    name='ProductInquiry',
+    data=StateData(data={'task': 'Answering product inquiries...'})
+)
+
+account_management_state = State(
+    id=str(uuid.uuid4()),
+    name='AccountManagement',
+    data=StateData(data={'task': 'Assisting with account management...'})
+)
+
+goodbye_state = State(
+    id=str(uuid.uuid4()),
+    name='Goodbye',
+    data=StateData(data={'message': 'Thank you for visiting E-Shop! Have a great day!'})
+)
+
+# Create the state machine with a specified model
+state_machine = StateMachine(
+    name='CustomerSupportAssistant',
+    initial_state=welcome_state,
+    model_name='gpt-3.5-turbo'  # Replace with your desired model
+)
 
 # Add states to the state machine
-for state in states:
-    state_machine.add_state(state)
+state_machine.add_state(main_menu_state)
+state_machine.add_state(order_tracking_state)
+state_machine.add_state(collect_order_number_state)
+state_machine.add_state(provide_order_status_state)
+state_machine.add_state(returns_refunds_state)
+state_machine.add_state(product_inquiry_state)
+state_machine.add_state(account_management_state)
+state_machine.add_state(goodbye_state)
 
-# Add transitions
-state_machine.add_transition(Transition(from_state='initialize', to_state='select_task'))
-state_machine.add_transition(Transition(from_state='select_task', to_state='execute_task'))
-state_machine.add_transition(Transition(from_state='execute_task', to_state='review_outcome'))
-state_machine.add_transition(Transition(from_state='review_outcome', to_state='select_task'))
-state_machine.add_transition(Transition(from_state='review_outcome', to_state='idle'))
+# Define transitions
+transitions = [
+    Transition(from_state='Welcome', to_state='MainMenu'),
+    Transition(from_state='MainMenu', to_state='OrderTracking'),
+    Transition(from_state='OrderTracking', to_state='CollectOrderNumber'),
+    Transition(from_state='CollectOrderNumber', to_state='ProvideOrderStatus'),
+    Transition(from_state='ProvideOrderStatus', to_state='MainMenu'),
+    Transition(from_state='MainMenu', to_state='ReturnsAndRefunds'),
+    Transition(from_state='MainMenu', to_state='ProductInquiry'),
+    Transition(from_state='MainMenu', to_state='AccountManagement'),
+    Transition(from_state='MainMenu', to_state='Goodbye'),
+    Transition(from_state='ReturnsAndRefunds', to_state='MainMenu'),
+    Transition(from_state='ProductInquiry', to_state='MainMenu'),
+    Transition(from_state='AccountManagement', to_state='MainMenu'),
+]
 
-# Save the state machine to ChromaDB
-chroma_manager = ChromaStateManager(persist_directory="chroma_db")
-chroma_manager.save_state_machine(state_machine)
+# Add transitions to the state machine
+for transition in transitions:
+    state_machine.add_transition(transition)
 
-# Simulate AI agent operations
-tasks = ["Analyze data", "Generate report", "Optimize algorithm"]
+# Implement action functions
+def fetch_order_status(order_number: str) -> str:
+    # Simulate fetching order status from a database
+    return f"Order {order_number} is currently in transit and will be delivered in 2 days."
 
-for task in tasks:
-    state_machine.trigger_transition(f"New task: {task}")
-    while state_machine.current_state.name != 'idle':
-        print(f"Current State: {state_machine.current_state.name}")
-        print(f"Action: {state_machine.current_state.data.data['message']}")
-        state_machine.trigger_transition("Continue")
+def handle_returns_and_refunds():
+    return "I've initiated the return process for you. Please check your email for further instructions."
 
-print("All tasks completed. AI agent is idle.")
+def answer_product_inquiry():
+    return "The product you're interested in is available in multiple colors and sizes."
 
-# Visualize the state machine
-state_machine.visualize("ai_task_manager")
+def assist_account_management():
+    return "Your account settings have been updated as per your request."
+
+def main():
+    print(f"Current State: {state_machine.current_state.name}")
+    print(state_machine.current_state.data.data['message'])
+
+    while True:
+        user_input = input("You: ")
+
+        if not user_input.strip():
+            continue  # Skip empty input
+
+        # Before triggering transition, print current state
+        print(f"\n[Before Transition] Current State: {state_machine.current_state.name}")
+
+        # Exit the loop if the user wants to quit
+        if user_input.lower() in ['exit', 'quit', 'goodbye']:
+            state_machine.current_state = goodbye_state
+            print(state_machine.current_state.data.data['message'])
+            break
+
+        state_machine.trigger_transition(user_input)
+
+        # After triggering transition, print new state
+        print(f"[After Transition] Current State: {state_machine.current_state.name}")
+
+        # Update state history
+        state_machine.state_history.append(state_machine.current_state.name)
+        print(f"State History: {' -> '.join(state_machine.state_history)}")
+
+        # After the transition, print the assistant's response
+        if state_machine.conversation_history:
+            last_turn = state_machine.conversation_history[-1]
+            assistant_response = last_turn.get('assistant_response', '')
+            if assistant_response:
+                print(f"Assistant: {assistant_response}")
+
+        # Perform any actions associated with the current state
+        if state_machine.current_state.name == 'ProvideOrderStatus':
+            # Assume we stored the order_number in metadata
+            order_number = "123456"  # Replace with actual order number logic
+            status_message = fetch_order_status(order_number)
+            print(f"Action: {status_message}")
+        elif state_machine.current_state.name == 'ReturnsAndRefunds':
+            result_message = handle_returns_and_refunds()
+            print(f"Action: {result_message}")
+        elif state_machine.current_state.name == 'ProductInquiry':
+            result_message = answer_product_inquiry()
+            print(f"Action: {result_message}")
+        elif state_machine.current_state.name == 'AccountManagement':
+            result_message = assist_account_management()
+            print(f"Action: {result_message}")
+        elif state_machine.current_state.name == 'Goodbye':
+            print(state_machine.current_state.data.data['message'])
+            break
+
+    # Optionally, after exiting, print the final state history
+    print("\nFinal State History:")
+    print(" -> ".join(state_machine.state_history))
+
+# Run the main function
+if __name__ == '__main__':
+    main()
 ```
 
-This example creates a simple AI agent that can manage tasks using the state machine. It demonstrates how to define states, add transitions, persist the state machine, and simulate its operation.
+**Explanation of the Example:**
+
+- **State Definitions:**
+  - We define several states representing different stages of the customer support interaction, such as `Welcome`, `MainMenu`, `OrderTracking`, `ProvideOrderStatus`, etc.
+
+- **State Machine Initialization:**
+  - We create a `StateMachine` instance, specifying the initial state and the OpenAI model to use.
+
+- **Adding States and Transitions:**
+  - All states and transitions are added to the state machine. Transitions define how the state machine moves from one state to another based on the conversation flow.
+
+- **Action Functions:**
+  - Functions like `fetch_order_status`, `handle_returns_and_refunds`, etc., simulate backend operations that would occur in a real-world scenario.
+
+- **Main Conversation Loop:**
+  - The `main` function runs an interactive loop where the user can input messages, and the assistant responds accordingly.
+  - The assistant uses the OpenAI model specified to process messages and determine state transitions.
+
+- **State Management:**
+  - The state machine keeps track of the current state and moves to the next state based on user input and OpenAI's decision-making.
+  - Actions associated with each state are performed when the state is active.
+
+**Sample Interaction:**
+
+```plaintext
+Current State: Welcome
+Welcome to E-Shop! How can I assist you today?
+You: I'd like to track my order.
+
+[Before Transition] Current State: Welcome
+Assistant Response: Sure, I can help you with order tracking. Please provide your order number.
+[After Transition] Current State: CollectOrderNumber
+State History: Welcome -> CollectOrderNumber
+You: My order number is 123456.
+
+[Before Transition] Current State: CollectOrderNumber
+Assistant Response: Thank you! Retrieving the status of your order now.
+[After Transition] Current State: ProvideOrderStatus
+State History: Welcome -> CollectOrderNumber -> ProvideOrderStatus
+Action: Order 123456 is currently in transit and will be delivered in 2 days.
+You: Great, thanks!
+
+[Before Transition] Current State: ProvideOrderStatus
+Assistant Response: You're welcome! Is there anything else I can assist you with?
+[After Transition] Current State: MainMenu
+State History: Welcome -> CollectOrderNumber -> ProvideOrderStatus -> MainMenu
+You: No, that's all.
+
+[Before Transition] Current State: MainMenu
+Assistant Response: Thank you for visiting E-Shop! Have a great day!
+[After Transition] Current State: Goodbye
+State History: Welcome -> CollectOrderNumber -> ProvideOrderStatus -> MainMenu -> Goodbye
+
+Final State History:
+Welcome -> CollectOrderNumber -> ProvideOrderStatus -> MainMenu -> Goodbye
+```
+
+**Note:**
+
+- In a real implementation, the assistant's responses and state transitions are determined by the OpenAI model based on your inputs.
+- Ensure that you have set the `OPENAI_API_KEY` in your environment variables or appropriately in your code.
+- Replace `'gpt-3.5-turbo'` with your desired OpenAI model.
+- The action functions simulate backend processes and should be replaced with actual logic in a production environment.
