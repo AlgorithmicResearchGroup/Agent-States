@@ -117,7 +117,6 @@ def assist_account_management():
 def main():
     print(f"Current State: {state_machine.current_state.name}")
     print(state_machine.current_state.data.data['message'])
-    #state_machine.state_history.append(state_machine.current_state.name)
 
     while True:
         user_input = input("You: ")
