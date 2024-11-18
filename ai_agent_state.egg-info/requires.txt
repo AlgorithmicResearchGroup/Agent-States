@@ -1,0 +1,15 @@
+chromadb<1.0.0,>=0.3.0
+openai<1.0.0,>=0.27.0
+python-dotenv<1.0.0,>=0.19.0
+numpy<2.0.0,>=1.20.0
+pandas<2.0.0,>=1.2.0
+tqdm<5.0.0,>=4.60.0
+sentence-transformers<3.0.0,>=2.0.0
+typing-extensions<5.0.0,>=3.7.4
+
+[dev]
+pytest<8.0.0,>=6.2.0
+pytest-cov<4.0.0,>=2.10.0
+
+[viz]
+graphviz<1.0.0,>=0.16

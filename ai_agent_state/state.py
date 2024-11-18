@@ -11,8 +11,6 @@ from dotenv import load_dotenv
 # Import for ChromaDB
 import chromadb
 from chromadb.utils import embedding_functions
-
-# Import for OpenAI's API
 import openai
 from openai import OpenAI
 
@@ -83,9 +81,15 @@ class Transition:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Transition':
-        condition = globals().get(data["condition"])
-        action = globals().get(data["action"])
+    def from_dict(
+        cls,
+        data: Dict[str, Any],
+        function_registry: Optional[Dict[str, Callable]] = None
+    ) -> 'Transition':
+        if function_registry is None:
+            function_registry = {}
+        condition = function_registry.get(data["condition"])
+        action = function_registry.get(data["action"])
         return cls(
             from_state=data["from_state"],
             to_state=data["to_state"],
@@ -108,7 +112,7 @@ class SetNextState:
         }
 
 class StateMachine:
-    def __init__(self, name: str, initial_state: State):
+    def __init__(self, name: str, initial_state: State, model_name: Optional[str] = None):
         self.lock = threading.Lock()
         self.id = str(uuid.uuid4())
         self.name = name
@@ -118,6 +122,7 @@ class StateMachine:
         self.children: Dict[str, 'StateMachine'] = {}
         self.conversation_history: List[Dict[str, Any]] = []
         self.state_history: List[str] = [initial_state.name]  # New: Track state history
+        self.model_name = model_name or os.getenv('OPENAI_MODEL', 'gpt-4o')  # Default model
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -225,7 +230,7 @@ class StateMachine:
 
             try:
                 response = client.chat.completions.create(
-                    model=os.getenv('OPENAI_MODEL', 'gpt-4'),
+                    model=self.model_name,
                     messages=messages,
                     functions=functions,
                     function_call="auto",  # Let the assistant decide whether to call the function
@@ -265,7 +270,7 @@ class StateMachine:
 
                             # Call the model again to get the assistant's final response
                             second_response = client.chat.completions.create(
-                                model=os.getenv('OPENAI_MODEL', 'gpt-4'),
+                                model=os.getenv('OPENAI_MODEL', 'gpt-4o'),
                                 messages=new_messages
                             )
 
@@ -297,6 +302,7 @@ class StateMachine:
 
             except Exception as e:
                 print(f"Error in trigger_transition: {e}")
+                raise 
                 # Handle the error appropriately, e.g., set to a default state
 
     def visualize(self, filename: str) -> None:
@@ -393,112 +399,165 @@ if __name__ == "__main__":
     load_dotenv()
 
     # Define states
-    states = [
-        State(id=str(uuid.uuid4()), name='initialize', data=StateData(data={'message': 'Initializing AI agent...'})),
-        State(id=str(uuid.uuid4()), name='select_task', data=StateData(data={'message': 'Selecting next task...'})),
-        State(id=str(uuid.uuid4()), name='gather_info', data=StateData(data={'message': 'Gathering information for task...'})),
-        State(id=str(uuid.uuid4()), name='analyze_data', data=StateData(data={'message': 'Analyzing collected data...'})),
-        State(id=str(uuid.uuid4()), name='execute_task', data=StateData(data={'message': 'Executing task...'})),
-        State(id=str(uuid.uuid4()), name='review_outcome', data=StateData(data={'message': 'Reviewing task outcome...'})),
-        State(id=str(uuid.uuid4()), name='update_task_list', data=StateData(data={'message': 'Updating task list...'})),
-        State(id=str(uuid.uuid4()), name='idle', data=StateData(data={'message': 'All tasks complete. Waiting for new tasks...'})),
+    welcome_state = State(
+        id=str(uuid.uuid4()),
+        name='Welcome',
+        data=StateData(data={'message': 'Welcome to E-Shop! How can I assist you today?'})
+    )
+
+    main_menu_state = State(
+        id=str(uuid.uuid4()),
+        name='MainMenu',
+        data=StateData(data={'message': 'Please choose an option: Order Tracking, Returns and Refunds, Product Inquiry, Account Management, or type "exit" to quit.'})
+    )
+
+    order_tracking_state = State(
+        id=str(uuid.uuid4()),
+        name='OrderTracking',
+        data=StateData(data={'task': 'Assisting with order tracking...'})
+    )
+
+    collect_order_number_state = State(
+        id=str(uuid.uuid4()),
+        name='CollectOrderNumber',
+        data=StateData(data={'message': 'Please provide your order number.'})
+    )
+
+    provide_order_status_state = State(
+        id=str(uuid.uuid4()),
+        name='ProvideOrderStatus',
+        data=StateData(data={'task': 'Providing order status...'})
+    )
+
+    returns_refunds_state = State(
+        id=str(uuid.uuid4()),
+        name='ReturnsAndRefunds',
+        data=StateData(data={'task': 'Assisting with returns and refunds...'})
+    )
+
+    product_inquiry_state = State(
+        id=str(uuid.uuid4()),
+        name='ProductInquiry',
+        data=StateData(data={'task': 'Answering product inquiries...'})
+    )
+
+    account_management_state = State(
+        id=str(uuid.uuid4()),
+        name='AccountManagement',
+        data=StateData(data={'task': 'Assisting with account management...'})
+    )
+
+    goodbye_state = State(
+        id=str(uuid.uuid4()),
+        name='Goodbye',
+        data=StateData(data={'message': 'Thank you for visiting E-Shop! Have a great day!'})
+    )
+
+    # Create the state machine with a specified model (optional)
+    state_machine = StateMachine(
+        name='CustomerSupportAssistant',
+        initial_state=welcome_state,
+        model_name='gpt-4o'  # or any model you prefer
+    )
+
+
+    state_machine.add_state(main_menu_state)
+    state_machine.add_state(order_tracking_state)
+    state_machine.add_state(collect_order_number_state)
+    state_machine.add_state(provide_order_status_state)
+    state_machine.add_state(returns_refunds_state)
+    state_machine.add_state(product_inquiry_state)
+    state_machine.add_state(account_management_state)
+    state_machine.add_state(goodbye_state)
+
+    transitions = [
+        Transition(from_state='Welcome', to_state='MainMenu'),
+        Transition(from_state='MainMenu', to_state='OrderTracking'),
+        Transition(from_state='OrderTracking', to_state='CollectOrderNumber'),
+        Transition(from_state='CollectOrderNumber', to_state='ProvideOrderStatus'),
+        Transition(from_state='ProvideOrderStatus', to_state='MainMenu'),
+        Transition(from_state='MainMenu', to_state='ReturnsAndRefunds'),
+        Transition(from_state='MainMenu', to_state='ProductInquiry'),
+        Transition(from_state='MainMenu', to_state='AccountManagement'),
+        Transition(from_state='MainMenu', to_state='Goodbye'),
+        Transition(from_state='ReturnsAndRefunds', to_state='MainMenu'),
+        Transition(from_state='ProductInquiry', to_state='MainMenu'),
+        Transition(from_state='AccountManagement', to_state='MainMenu'),
     ]
 
-    # Create the state machine
-    state_machine = StateMachine(name='AITaskManager', initial_state=states[0])
+    # Add transitions to the state machine
+    for transition in transitions:
+        state_machine.add_transition(transition)
 
-    # Add states to the state machine
-    for state in states:
-        state_machine.add_state(state)
+    # Implement action functions
+    def fetch_order_status(order_number: str) -> str:
+        # Simulate fetching order status from a database
+        return f"Order {order_number} is currently in transit and will be delivered in 2 days."
 
-    # Add transitions
-    state_machine.add_transition(Transition(from_state='initialize', to_state='select_task'))
-    state_machine.add_transition(Transition(from_state='select_task', to_state='gather_info'))
-    state_machine.add_transition(Transition(from_state='gather_info', to_state='analyze_data'))
-    state_machine.add_transition(Transition(from_state='analyze_data', to_state='execute_task'))
-    state_machine.add_transition(Transition(from_state='execute_task', to_state='review_outcome'))
-    state_machine.add_transition(Transition(from_state='review_outcome', to_state='update_task_list'))
-    state_machine.add_transition(Transition(from_state='update_task_list', to_state='select_task'))
-    state_machine.add_transition(Transition(from_state='update_task_list', to_state='idle'))
+    def handle_returns_and_refunds():
+        return "I've initiated the return process for you. Please check your email for further instructions."
 
-    # Save the state machine to ChromaDB
-    chroma_manager = ChromaStateManager(persist_directory="chroma_db")
-    chroma_manager.save_state_machine(state_machine)
+    def answer_product_inquiry():
+        return "The product you asked about is in stock and available in various sizes."
 
-    # Load the state machine from ChromaDB
-    loaded_state_machine = chroma_manager.load_state_machine(state_machine.id)
+    def assist_account_management():
+        return "I've updated your account preferences as requested."
 
-    # Simulate AI agent operations
-    print("Simulating AI Agent Task Management")
-    print("===================================")
+    def main():
+        print(f"Current State: {state_machine.current_state.name}")
+        print(state_machine.current_state.data.data['message'])
+        # state_machine.state_history.append(state_machine.current_state.name)
 
-    # Define a list of tasks for the AI agent to complete
-    tasks = [
-        "Analyze market trends for Q3",
-        "Optimize database queries for improved performance",
-        "Generate monthly financial report",
-        "Update customer segmentation model",
-        "Conduct security audit of cloud infrastructure"
-    ]
+        while True:
+            user_input = input("You: ")
 
-    def simulate_task_progress():
-        progress = random.choice(["completed", "needs_more_info", "encountered_issue"])
-        if progress == "needs_more_info":
-            return "Task requires additional information. Returning to information gathering."
-        elif progress == "encountered_issue":
-            return "Encountered an issue during task execution. Reviewing and adjusting approach."
-        else:
-            return "Task completed successfully."
+            if not user_input.strip():
+                continue  # Skip empty input
 
-    task_index = 0
-    while tasks:
-        current_state = loaded_state_machine.current_state
-        print(f"\nCurrent State: {current_state.name}")
-        print(f"Action: {current_state.data.data['message']}")
-        
-        # Simulate some processing time
-        time.sleep(1)
-        
-        if current_state.name == 'select_task':
-            print(f"Selected Task: {tasks[task_index]}")
-        elif current_state.name == 'execute_task':
-            progress_result = simulate_task_progress()
-            print(f"Task Progress: {progress_result}")
-        elif current_state.name == 'update_task_list':
-            if "completed successfully" in progress_result:
-                completed_task = tasks.pop(task_index)
-                print(f"Completed and removed task: {completed_task}")
-                if tasks:
-                    task_index = task_index % len(tasks)
-                else:
-                    print("All tasks completed!")
-                    break  # Exit the loop when all tasks are completed
-            else:
-                task_index = (task_index + 1) % len(tasks)
-        
-        # Determine next state based on current state and task progress
-        next_state = current_state.name
-        if current_state.name == 'update_task_list':
-            next_state = 'idle' if not tasks else 'select_task'
-        elif current_state.name == 'review_outcome':
-            next_state = 'update_task_list'
-        elif current_state.name != 'idle':
-            state_index = [s.name for s in states].index(current_state.name)
-            next_state = states[(state_index + 1) % len(states)].name
-        
-        # Trigger state transition
-        loaded_state_machine.trigger_transition(f"Moving to {next_state} state")
-        
-        # Simulate some more processing time
-        time.sleep(1)
+            # Before triggering transition, print current state
+            print(f"\n[Before Transition] Current State: {state_machine.current_state.name}")
 
-    # After the loop, ensure we're in the 'idle' state
-    if loaded_state_machine.current_state.name != 'idle':
-        loaded_state_machine.trigger_transition("Moving to idle state")
+            # Exit the loop if the user wants to quit
+            if user_input.lower() in ['exit', 'quit', 'goodbye']:
+                state_machine.current_state = goodbye_state
+                print(state_machine.current_state.data.data['message'])
+                break
 
-    print("\nAll tasks completed. State machine is now idle.")
+            state_machine.trigger_transition(user_input)
 
-    # Optional: Visualize the state machine
-    loaded_state_machine.visualize("ai_task_manager")
+            # After triggering transition, print new state
+            print(f"[After Transition] Current State: {state_machine.current_state.name}")
 
-    print("\nSimulation complete. All tasks finished. State machine visualization saved as 'ai_task_manager.pdf'")
+            # Update state history
+            state_machine.state_history.append(state_machine.current_state.name)
+            print(f"State History: {' -> '.join(state_machine.state_history)}")
+
+            # After the transition, print the assistant's response
+            if state_machine.conversation_history:
+                last_turn = state_machine.conversation_history[-1]
+                assistant_response = last_turn.get('assistant_response', '')
+                if assistant_response:
+                    print(f"Assistant: {assistant_response}")
+
+            # Perform any actions associated with the current state
+            if state_machine.current_state.name == 'ProvideOrderStatus':
+                # Assume we stored the order_number in metadata
+                order_number = state_machine.current_state.data.metadata.custom_data.get('order_number', 'Unknown')
+                status_message = fetch_order_status(order_number)
+                print(f"Action: {status_message}")
+            elif state_machine.current_state.name == 'ReturnsAndRefunds':
+                result_message = handle_returns_and_refunds()
+                print(f"Action: {result_message}")
+            elif state_machine.current_state.name == 'ProductInquiry':
+                result_message = answer_product_inquiry()
+                print(f"Action: {result_message}")
+            elif state_machine.current_state.name == 'AccountManagement':
+                result_message = assist_account_management()
+                print(f"Action: {result_message}")
+            elif state_machine.current_state.name == 'Goodbye':
+                print(state_machine.current_state.data.data['message'])
+                break
+
+        # Optionally, after exiting, print the final state history
+        print("\nFinal State History:")
+        print(" -> ".join(state_machine.state_history))
