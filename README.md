@@ -12,11 +12,13 @@ Key features of the library include:
 
 3. **Dynamic Transitions**: The library supports the creation of transitions between states, which can be conditional and trigger specific actions.
 
-4. **Persistence**: Integration with ChromaDB enables efficient storage and retrieval of state machines, allowing for continuity across sessions or distributed systems.
+4. **State Transition Guards**: Implement conditions that must be met for transitions to occur, providing more control over state changes.
 
-5. **Visualization**: The library includes tools to visualize state machines, aiding in debugging and understanding complex agent behaviors.
+5. **Persistence**: Integration with ChromaDB enables efficient storage and retrieval of state machines, allowing for continuity across sessions or distributed systems.
 
-6. **OpenAI Integration**: It leverages the OpenAI API for dynamic decision-making, allowing for more intelligent and adaptive state transitions.
+6. **Visualization**: The library includes tools to visualize state machines, aiding in debugging and understanding complex agent behaviors.
+
+7. **OpenAI Integration**: It leverages the OpenAI API for dynamic decision-making, allowing for more intelligent and adaptive state transitions.
 
 ## When is it useful?
 
@@ -37,6 +39,7 @@ By providing a structured way to design, implement, and manage AI agent behavior
 - Create and manage complex state machines for AI agents
 - Define custom states with associated data and metadata
 - Create transitions between states with optional conditions and actions
+- Implement state transition guards for controlled state changes
 - Persist and retrieve state machines using ChromaDB
 - Visualize state machines for easy understanding and debugging
 - Integration with OpenAI's API for dynamic decision-making
@@ -121,6 +124,7 @@ For detailed documentation on classes and methods, please refer to the [full doc
 The AI Agent State Library supports advanced features such as:
 
 - Custom transition conditions and actions
+- State transition guards for controlled state changes
 - Integration with language models for dynamic decision-making
 - Searching for similar states using vector embeddings
 - Visualizing complex state machines
@@ -212,17 +216,17 @@ state_machine.add_state(product_inquiry_state)
 state_machine.add_state(account_management_state)
 state_machine.add_state(goodbye_state)
 
-# Define transitions
+# Define transitions with conditions
 transitions = [
     Transition(from_state='Welcome', to_state='MainMenu'),
-    Transition(from_state='MainMenu', to_state='OrderTracking'),
+    Transition(from_state='MainMenu', to_state='OrderTracking', condition=is_order_tracking),
     Transition(from_state='OrderTracking', to_state='CollectOrderNumber'),
-    Transition(from_state='CollectOrderNumber', to_state='ProvideOrderStatus'),
+    Transition(from_state='CollectOrderNumber', to_state='ProvideOrderStatus', condition=has_order_number),
     Transition(from_state='ProvideOrderStatus', to_state='MainMenu'),
-    Transition(from_state='MainMenu', to_state='ReturnsAndRefunds'),
-    Transition(from_state='MainMenu', to_state='ProductInquiry'),
-    Transition(from_state='MainMenu', to_state='AccountManagement'),
-    Transition(from_state='MainMenu', to_state='Goodbye'),
+    Transition(from_state='MainMenu', to_state='ReturnsAndRefunds', condition=is_returns_and_refunds),
+    Transition(from_state='MainMenu', to_state='ProductInquiry', condition=is_product_inquiry),
+    Transition(from_state='MainMenu', to_state='AccountManagement', condition=is_account_management),
+    Transition(from_state='MainMenu', to_state='Goodbye', condition=is_exit_command),
     Transition(from_state='ReturnsAndRefunds', to_state='MainMenu'),
     Transition(from_state='ProductInquiry', to_state='MainMenu'),
     Transition(from_state='AccountManagement', to_state='MainMenu'),
@@ -260,7 +264,7 @@ def main():
         print(f"\n[Before Transition] Current State: {state_machine.current_state.name}")
 
         # Exit the loop if the user wants to quit
-        if user_input.lower() in ['exit', 'quit', 'goodbye']:
+        if is_exit_command(user_input, state_machine):
             state_machine.current_state = goodbye_state
             print(state_machine.current_state.data.data['message'])
             break
@@ -432,39 +436,6 @@ Manages the persistence and retrieval of state machines using ChromaDB.
 - `load_state_machine(state_machine_id)`: Loads a state machine from the database.
 - `search_similar_states(query, top_k)`: Searches for similar states based on a query.
 
-
-```plaintext
-Current State: Welcome
-Welcome to E-Shop! How can I assist you today?
-You: I'd like to track my order.
-
-[Before Transition] Current State: Welcome
-Assistant Response: Sure, I can help you with order tracking. Please provide your order number.
-[After Transition] Current State: CollectOrderNumber
-State History: Welcome -> CollectOrderNumber
-You: My order number is 123456.
-
-[Before Transition] Current State: CollectOrderNumber
-Assistant Response: Thank you! Retrieving the status of your order now.
-[After Transition] Current State: ProvideOrderStatus
-State History: Welcome -> CollectOrderNumber -> ProvideOrderStatus
-Action: Order 123456 is currently in transit and will be delivered in 2 days.
-You: Great, thanks!
-
-[Before Transition] Current State: ProvideOrderStatus
-Assistant Response: You're welcome! Is there anything else I can assist you with?
-[After Transition] Current State: MainMenu
-State History: Welcome -> CollectOrderNumber -> ProvideOrderStatus -> MainMenu
-You: No, that's all.
-
-[Before Transition] Current State: MainMenu
-Assistant Response: Thank you for visiting E-Shop! Have a great day!
-[After Transition] Current State: Goodbye
-State History: Welcome -> CollectOrderNumber -> ProvideOrderStatus -> MainMenu -> Goodbye
-
-Final State History:
-Welcome -> CollectOrderNumber -> ProvideOrderStatus -> MainMenu -> Goodbye
-```
 
 **Note:**
 

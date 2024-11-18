@@ -69,8 +69,8 @@ class State:
 class Transition:
     from_state: str
     to_state: str
-    condition: Optional[Callable[[Any], bool]] = None
-    action: Optional[Callable[[Any], None]] = None
+    condition: Optional[Callable[[Any, 'StateMachine'], bool]] = None
+    action: Optional[Callable[['StateMachine'], None]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -319,6 +319,18 @@ class StateMachine:
             dot.edge(transition.from_state, transition.to_state)
         dot.render(filename)
 
+    def find_valid_transitions(self, user_input: str) -> List[Transition]:
+        valid_transitions = []
+        for transition in self.transitions:
+            if transition.from_state == self.current_state.name:
+                if transition.condition:
+                    # Pass necessary context or data to the condition function
+                    if transition.condition(user_input, self):
+                        valid_transitions.append(transition)
+                else:
+                    valid_transitions.append(transition)
+        return valid_transitions
+
 class ChromaStateManager:
     def __init__(self, persist_directory: str, embedding_function=None):
         self.client = chromadb.PersistentClient(path=persist_directory)
@@ -470,19 +482,27 @@ if __name__ == "__main__":
     state_machine.add_state(account_management_state)
     state_machine.add_state(goodbye_state)
 
+        # Condition function to check if the user input requests order tracking
+    def is_order_tracking(user_input: str, state_machine: StateMachine) -> bool:
+        return 'track' in user_input.lower() or 'order' in user_input.lower()
+
+    # Condition function to check if the user provided an order number
+    def has_order_number(user_input: str, state_machine: StateMachine) -> bool:
+        return any(char.isdigit() for char in user_input)
+
+    # Condition function for exiting
+    def is_exit_command(user_input: str, state_machine: StateMachine) -> bool:
+        return user_input.lower() in ['exit', 'quit', 'goodbye']
+
+    # Define transitions with conditions
     transitions = [
         Transition(from_state='Welcome', to_state='MainMenu'),
-        Transition(from_state='MainMenu', to_state='OrderTracking'),
+        Transition(from_state='MainMenu', to_state='OrderTracking', condition=is_order_tracking),
         Transition(from_state='OrderTracking', to_state='CollectOrderNumber'),
-        Transition(from_state='CollectOrderNumber', to_state='ProvideOrderStatus'),
+        Transition(from_state='CollectOrderNumber', to_state='ProvideOrderStatus', condition=has_order_number),
         Transition(from_state='ProvideOrderStatus', to_state='MainMenu'),
-        Transition(from_state='MainMenu', to_state='ReturnsAndRefunds'),
-        Transition(from_state='MainMenu', to_state='ProductInquiry'),
-        Transition(from_state='MainMenu', to_state='AccountManagement'),
-        Transition(from_state='MainMenu', to_state='Goodbye'),
-        Transition(from_state='ReturnsAndRefunds', to_state='MainMenu'),
-        Transition(from_state='ProductInquiry', to_state='MainMenu'),
-        Transition(from_state='AccountManagement', to_state='MainMenu'),
+        Transition(from_state='MainMenu', to_state='Goodbye', condition=is_exit_command),
+        # ... other transitions ...
     ]
 
     # Add transitions to the state machine
