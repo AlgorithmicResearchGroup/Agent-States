@@ -282,7 +282,7 @@ class StateMachine:
                                 "assistant_response": assistant_response
                             })
 
-                            print("Assistant Response:", assistant_response)
+                            #print("Assistant Response:", assistant_response)
                         else:
                             raise ValueError(f"Invalid next state: {next_state_name}")
                     elif function_name == "move_to_previous_state":
@@ -298,7 +298,7 @@ class StateMachine:
                         "user_input": user_input,
                         "assistant_response": assistant_response
                     })
-                    print("Assistant Response:", assistant_response)
+                    #print("Assistant Response:", assistant_response)
 
             except Exception as e:
                 print(f"Error in trigger_transition: {e}")

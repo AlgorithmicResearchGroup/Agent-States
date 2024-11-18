@@ -1,7 +1,7 @@
 import os
 import uuid
 from dotenv import load_dotenv
-from typing import Any
+from typing import Any, Dict
 import openai
 
 from ai_agent_state.state import (
@@ -12,60 +12,53 @@ from ai_agent_state.state import (
     StateMachine,
 ) 
 
+# Factory functions to simplify state and transition creation
+def create_state(name: str, data: Dict[str, Any]) -> State:
+    return State(
+        id=str(uuid.uuid4()),
+        name=name,
+        data=StateData(data=data)
+    )
+
+def create_transition(from_state: str, to_state: str) -> Transition:
+    return Transition(from_state=from_state, to_state=to_state)
+
 # Define states
-welcome_state = State(
-    id=str(uuid.uuid4()),
-    name='Welcome',
-    data=StateData(data={'message': 'Welcome to E-Shop! How can I assist you today?'})
-)
+welcome_state = create_state('Welcome', {
+    'message': 'Welcome to E-Shop! How can I assist you today?'
+})
 
-main_menu_state = State(
-    id=str(uuid.uuid4()),
-    name='MainMenu',
-    data=StateData(data={'message': 'Please choose an option: Order Tracking, Returns and Refunds, Product Inquiry, Account Management, or type "exit" to quit.'})
-)
+main_menu_state = create_state('MainMenu', {
+    'message': 'Please choose an option: Order Tracking, Returns and Refunds, Product Inquiry, Account Management, or type "exit" to quit.'
+})
 
-order_tracking_state = State(
-    id=str(uuid.uuid4()),
-    name='OrderTracking',
-    data=StateData(data={'task': 'Assisting with order tracking...'})
-)
+order_tracking_state = create_state('OrderTracking', {
+    'task': 'Assisting with order tracking...'
+})
 
-collect_order_number_state = State(
-    id=str(uuid.uuid4()),
-    name='CollectOrderNumber',
-    data=StateData(data={'message': 'Please provide your order number.'})
-)
+collect_order_number_state = create_state('CollectOrderNumber', {
+    'message': 'Please provide your order number.'
+})
 
-provide_order_status_state = State(
-    id=str(uuid.uuid4()),
-    name='ProvideOrderStatus',
-    data=StateData(data={'task': 'Providing order status...'})
-)
+provide_order_status_state = create_state('ProvideOrderStatus', {
+    'task': 'Providing order status...'
+})
 
-returns_refunds_state = State(
-    id=str(uuid.uuid4()),
-    name='ReturnsAndRefunds',
-    data=StateData(data={'task': 'Assisting with returns and refunds...'})
-)
+returns_refunds_state = create_state('ReturnsAndRefunds', {
+    'task': 'Assisting with returns and refunds...'
+})
 
-product_inquiry_state = State(
-    id=str(uuid.uuid4()),
-    name='ProductInquiry',
-    data=StateData(data={'task': 'Answering product inquiries...'})
-)
+product_inquiry_state = create_state('ProductInquiry', {
+    'task': 'Answering product inquiries...'
+})
 
-account_management_state = State(
-    id=str(uuid.uuid4()),
-    name='AccountManagement',
-    data=StateData(data={'task': 'Assisting with account management...'})
-)
+account_management_state = create_state('AccountManagement', {
+    'task': 'Assisting with account management...'
+})
 
-goodbye_state = State(
-    id=str(uuid.uuid4()),
-    name='Goodbye',
-    data=StateData(data={'message': 'Thank you for visiting E-Shop! Have a great day!'})
-)
+goodbye_state = create_state('Goodbye', {
+    'message': 'Thank you for visiting E-Shop! Have a great day!'
+})
 
 # Create the state machine
 state_machine = StateMachine(
@@ -87,18 +80,18 @@ state_machine.add_state(goodbye_state)
 
 # Define transitions
 transitions = [
-    Transition(from_state='Welcome', to_state='MainMenu'),
-    Transition(from_state='MainMenu', to_state='OrderTracking'),
-    Transition(from_state='OrderTracking', to_state='CollectOrderNumber'),
-    Transition(from_state='CollectOrderNumber', to_state='ProvideOrderStatus'),
-    Transition(from_state='ProvideOrderStatus', to_state='MainMenu'),
-    Transition(from_state='MainMenu', to_state='ReturnsAndRefunds'),
-    Transition(from_state='MainMenu', to_state='ProductInquiry'),
-    Transition(from_state='MainMenu', to_state='AccountManagement'),
-    Transition(from_state='MainMenu', to_state='Goodbye'),
-    Transition(from_state='ReturnsAndRefunds', to_state='MainMenu'),
-    Transition(from_state='ProductInquiry', to_state='MainMenu'),
-    Transition(from_state='AccountManagement', to_state='MainMenu'),
+    create_transition('Welcome', 'MainMenu'),
+    create_transition('MainMenu', 'OrderTracking'),
+    create_transition('OrderTracking', 'CollectOrderNumber'),
+    create_transition('CollectOrderNumber', 'ProvideOrderStatus'),
+    create_transition('ProvideOrderStatus', 'MainMenu'),
+    create_transition('MainMenu', 'ReturnsAndRefunds'),
+    create_transition('MainMenu', 'ProductInquiry'),
+    create_transition('MainMenu', 'AccountManagement'),
+    create_transition('MainMenu', 'Goodbye'),
+    create_transition('ReturnsAndRefunds', 'MainMenu'),
+    create_transition('ProductInquiry', 'MainMenu'),
+    create_transition('AccountManagement', 'MainMenu'),
 ]
 
 # Add transitions to the state machine
