@@ -3,6 +3,10 @@ import uuid
 from dotenv import load_dotenv
 from typing import Any, Dict
 import openai
+from openai import OpenAI
+import os
+
+api_key = os.getenv('OPENAI_API_KEY')
 
 from ai_agent_state.state import (
     Metadata,
@@ -82,11 +86,14 @@ goodbye_state = create_state('Goodbye', {
     'message': 'Thank you for visiting E-Shop! Have a great day!'
 })
 
-# Create the state machine
+# Create the state machine with a specified model client
+# Assume `model_client` is passed or created elsewhere in your application
+model_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 state_machine = StateMachine(
     name='CustomerSupportAssistant',
     initial_state=welcome_state,
-    model_name='gpt-4o'  # Replace with your desired model
+    model_client=model_client,  # Pass the model client here
+    model_name='gpt-4o'  # Optional: specify a model name if needed
 )
 
 # Add states to the state machine
