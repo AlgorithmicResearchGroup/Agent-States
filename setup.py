@@ -11,7 +11,7 @@ setuptools.setup(
     description="A library for managing state machines in AI agents",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/algorithmicresearchgroup/ai-agent-state",
+    url="https://github.com/AlgorithmicResearchGroup/Agent-States",
     packages=setuptools.find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",
