@@ -11,8 +11,6 @@ from dotenv import load_dotenv
 # Import for ChromaDB
 import chromadb
 from chromadb.utils import embedding_functions
-import openai
-from openai import OpenAI
 
 # Load environment variables
 load_dotenv()
@@ -112,7 +110,7 @@ class SetNextState:
         }
 
 class StateMachine:
-    def __init__(self, name: str, initial_state: State, model_name: Optional[str] = None):
+    def __init__(self, name: str, initial_state: State, model_client: Any, model_name: Optional[str] = None):
         self.lock = threading.Lock()
         self.id = str(uuid.uuid4())
         self.name = name
@@ -122,6 +120,7 @@ class StateMachine:
         self.children: Dict[str, 'StateMachine'] = {}
         self.conversation_history: List[Dict[str, Any]] = []
         self.state_history: List[str] = [initial_state.name]  # New: Track state history
+        self.model_client = model_client
         self.model_name = model_name or os.getenv('OPENAI_MODEL', 'gpt-4o')  # Default model
 
     def to_dict(self) -> Dict[str, Any]:
@@ -226,10 +225,8 @@ class StateMachine:
                 }
             ]
 
-            client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-
             try:
-                response = client.chat.completions.create(
+                response = self.model_client.chat.completions.create(
                     model=self.model_name,
                     messages=messages,
                     functions=functions,
@@ -269,7 +266,7 @@ class StateMachine:
                             }]
 
                             # Call the model again to get the assistant's final response
-                            second_response = client.chat.completions.create(
+                            second_response = self.model_client.chat.completions.create(
                                 model=os.getenv('OPENAI_MODEL', 'gpt-4o'),
                                 messages=new_messages
                             )
@@ -465,10 +462,12 @@ if __name__ == "__main__":
         data=StateData(data={'message': 'Thank you for visiting E-Shop! Have a great day!'})
     )
 
-    # Create the state machine with a specified model (optional)
+    # Create the state machine with a specified model client
+    openai_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     state_machine = StateMachine(
         name='CustomerSupportAssistant',
         initial_state=welcome_state,
+        model_client=openai_client,
         model_name='gpt-4o'  # or any model you prefer
     )
 
