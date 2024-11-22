@@ -114,7 +114,15 @@ class TestChromaStateManager(unittest.TestCase):
         self.patcher.stop()
 
     def test_save_state_machine(self):
-        state_machine = StateMachine(name='TestStateMachine', initial_state=State(id='1', name='state1', data=StateData()))
+        # Mock the model client
+        mock_model_client = Mock()
+
+        # Create a state machine with the mock model client
+        state_machine = StateMachine(
+            name='TestStateMachine',
+            initial_state=State(id='1', name='state1', data=StateData()),
+            model_client=mock_model_client
+        )
         self.chroma_manager.save_state_machine(state_machine)
         # Verify that upsert was called
         self.assertTrue(self.mock_collection.upsert.called)
@@ -136,6 +144,10 @@ class TestChromaStateManager(unittest.TestCase):
             'documents': [json.dumps(state_machine_data)]
         }
 
-        loaded_state_machine = self.chroma_manager.load_state_machine('1')
+        # Mock the model client
+        mock_model_client = Mock()
+
+        # Pass the mock_model_client to load_state_machine
+        loaded_state_machine = self.chroma_manager.load_state_machine('1', model_client=mock_model_client)
         self.assertIsNotNone(loaded_state_machine)
         self.assertEqual(loaded_state_machine.name, 'TestStateMachine') 

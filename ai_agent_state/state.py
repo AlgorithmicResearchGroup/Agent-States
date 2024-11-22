@@ -135,13 +135,13 @@ class StateMachine:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'StateMachine':
+    def from_dict(cls, data: Dict[str, Any], model_client: Any) -> 'StateMachine':
         initial_state = State.from_dict(data["states"][data["current_state"]])
-        sm = cls(data["name"], initial_state)
+        sm = cls(data["name"], initial_state, model_client=model_client)
         sm.id = data["id"]
         sm.states = {name: State.from_dict(state_data) for name, state_data in data["states"].items()}
         sm.transitions = [Transition.from_dict(t) for t in data["transitions"]]
-        sm.children = {name: StateMachine.from_dict(child_data) for name, child_data in data["children"].items()}
+        sm.children = {name: StateMachine.from_dict(child_data, model_client) for name, child_data in data["children"].items()}
         sm.conversation_history = data.get("conversation_history", [])
         return sm
 
@@ -368,14 +368,14 @@ class ChromaStateManager:
             ids=[state_machine.id]
         )
 
-    def load_state_machine(self, state_machine_id: str) -> Optional[StateMachine]:
+    def load_state_machine(self, state_machine_id: str, model_client: Any) -> Optional[StateMachine]:
         try:
             results = self.collection.get(
                 where={"type": "state_machine_structure"},
                 ids=[state_machine_id]
             )
             if results['documents']:
-                return StateMachine.from_dict(json.loads(results['documents'][0]))
+                return StateMachine.from_dict(json.loads(results['documents'][0]), model_client=model_client)
         except Exception as e:
             print(f"Error loading state machine: {e}")
         return None
