@@ -1,18 +1,18 @@
-import setuptools
+from setuptools import setup, find_packages
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-setuptools.setup(
+setup(
     name="ai-agent-state",
-    version="0.0.01",
+    version="0.1.1",
     author="Algorithmic Research Group",
     author_email="matt@algorithmicresearchgroup.com",
     description="A library for managing state machines in AI agents",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/AlgorithmicResearchGroup/Agent-States",
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
