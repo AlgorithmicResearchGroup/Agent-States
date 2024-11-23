@@ -140,71 +140,99 @@ Here's an example of how to use this library to create an AI agent that manages 
 import os
 import uuid
 from dotenv import load_dotenv
-from ai_agent_state import State, StateData, StateMachine, Transition
+from typing import Any, Dict
+import openai
+from openai import OpenAI
+import os
 
-# Load API key from environment variables (ensure you have set OPENAI_API_KEY)
+api_key = os.getenv('OPENAI_API_KEY')
+
+from ai_agent_state.state import (
+    Metadata,
+    StateData,
+    State,
+    Transition,
+    StateMachine,
+)
+
+# Load environment variables (e.g., OpenAI API key)
 load_dotenv()
 
+# Factory functions to simplify state and transition creation
+def create_state(name: str, data: Dict[str, Any]) -> State:
+    return State(
+        id=str(uuid.uuid4()),
+        name=name,
+        data=StateData(data=data)
+    )
+
+def create_transition(from_state: str, to_state: str, condition=None) -> Transition:
+    return Transition(from_state=from_state, to_state=to_state, condition=condition)
+
+# Define condition functions
+def is_order_tracking(user_input: str, state_machine: StateMachine) -> bool:
+    return 'track' in user_input.lower() or 'order' in user_input.lower()
+
+def is_returns_and_refunds(user_input: str, state_machine: StateMachine) -> bool:
+    return 'return' in user_input.lower() or 'refund' in user_input.lower()
+
+def is_product_inquiry(user_input: str, state_machine: StateMachine) -> bool:
+    return 'product' in user_input.lower() or 'inquiry' in user_input.lower() or 'question' in user_input.lower()
+
+def is_account_management(user_input: str, state_machine: StateMachine) -> bool:
+    return 'account' in user_input.lower() or 'profile' in user_input.lower()
+
+def has_order_number(user_input: str, state_machine: StateMachine) -> bool:
+    return any(char.isdigit() for char in user_input)
+
+def is_exit_command(user_input: str, state_machine: StateMachine) -> bool:
+    return user_input.lower() in ['exit', 'quit', 'goodbye']
+
 # Define states
-welcome_state = State(
-    id=str(uuid.uuid4()),
-    name='Welcome',
-    data=StateData(data={'message': 'Welcome to E-Shop! How can I assist you today?'})
-)
+welcome_state = create_state('Welcome', {
+    'message': 'Welcome to E-Shop! How can I assist you today?'
+})
 
-main_menu_state = State(
-    id=str(uuid.uuid4()),
-    name='MainMenu',
-    data=StateData(data={'message': 'Please choose an option: Order Tracking, Returns and Refunds, Product Inquiry, Account Management, or type "exit" to quit.'})
-)
+main_menu_state = create_state('MainMenu', {
+    'message': 'Please choose an option: Order Tracking, Returns and Refunds, Product Inquiry, Account Management, or type "exit" to quit.'
+})
 
-order_tracking_state = State(
-    id=str(uuid.uuid4()),
-    name='OrderTracking',
-    data=StateData(data={'task': 'Assisting with order tracking...'})
-)
+order_tracking_state = create_state('OrderTracking', {
+    'message': 'Sure, I can help with order tracking.'
+})
 
-collect_order_number_state = State(
-    id=str(uuid.uuid4()),
-    name='CollectOrderNumber',
-    data=StateData(data={'message': 'Please provide your order number.'})
-)
+collect_order_number_state = create_state('CollectOrderNumber', {
+    'message': 'Please provide your order number.'
+})
 
-provide_order_status_state = State(
-    id=str(uuid.uuid4()),
-    name='ProvideOrderStatus',
-    data=StateData(data={'task': 'Providing order status...'})
-)
+provide_order_status_state = create_state('ProvideOrderStatus', {
+    'task': 'Providing order status...'
+})
 
-returns_refunds_state = State(
-    id=str(uuid.uuid4()),
-    name='ReturnsAndRefunds',
-    data=StateData(data={'task': 'Assisting with returns and refunds...'})
-)
+returns_refunds_state = create_state('ReturnsAndRefunds', {
+    'message': 'I can assist you with returns and refunds.'
+})
 
-product_inquiry_state = State(
-    id=str(uuid.uuid4()),
-    name='ProductInquiry',
-    data=StateData(data={'task': 'Answering product inquiries...'})
-)
+product_inquiry_state = create_state('ProductInquiry', {
+    'message': 'I can help answer your product questions.'
+})
 
-account_management_state = State(
-    id=str(uuid.uuid4()),
-    name='AccountManagement',
-    data=StateData(data={'task': 'Assisting with account management...'})
-)
+account_management_state = create_state('AccountManagement', {
+    'message': 'I can assist you with managing your account.'
+})
 
-goodbye_state = State(
-    id=str(uuid.uuid4()),
-    name='Goodbye',
-    data=StateData(data={'message': 'Thank you for visiting E-Shop! Have a great day!'})
-)
+goodbye_state = create_state('Goodbye', {
+    'message': 'Thank you for visiting E-Shop! Have a great day!'
+})
 
-# Create the state machine with a specified model
+# Create the state machine with a specified model client
+# Assume `model_client` is passed or created elsewhere in your application
+model_client = openai.OpenAI(api_key=api_key)
 state_machine = StateMachine(
     name='CustomerSupportAssistant',
     initial_state=welcome_state,
-    model_name='gpt-3.5-turbo'  # Replace with your desired model
+    model_client=model_client,  # Pass the model client here
+    model_name='gpt-4o'  # Optional: specify a model name if needed
 )
 
 # Add states to the state machine
@@ -217,20 +245,20 @@ state_machine.add_state(product_inquiry_state)
 state_machine.add_state(account_management_state)
 state_machine.add_state(goodbye_state)
 
-# Define transitions with conditions
+# Define transitions with condition functions
 transitions = [
-    Transition(from_state='Welcome', to_state='MainMenu'),
-    Transition(from_state='MainMenu', to_state='OrderTracking', condition=is_order_tracking),
-    Transition(from_state='OrderTracking', to_state='CollectOrderNumber'),
-    Transition(from_state='CollectOrderNumber', to_state='ProvideOrderStatus', condition=has_order_number),
-    Transition(from_state='ProvideOrderStatus', to_state='MainMenu'),
-    Transition(from_state='MainMenu', to_state='ReturnsAndRefunds', condition=is_returns_and_refunds),
-    Transition(from_state='MainMenu', to_state='ProductInquiry', condition=is_product_inquiry),
-    Transition(from_state='MainMenu', to_state='AccountManagement', condition=is_account_management),
-    Transition(from_state='MainMenu', to_state='Goodbye', condition=is_exit_command),
-    Transition(from_state='ReturnsAndRefunds', to_state='MainMenu'),
-    Transition(from_state='ProductInquiry', to_state='MainMenu'),
-    Transition(from_state='AccountManagement', to_state='MainMenu'),
+    create_transition('Welcome', 'MainMenu'),
+    create_transition('MainMenu', 'OrderTracking', condition=is_order_tracking),
+    create_transition('OrderTracking', 'CollectOrderNumber'),
+    create_transition('CollectOrderNumber', 'ProvideOrderStatus', condition=has_order_number),
+    create_transition('ProvideOrderStatus', 'MainMenu'),
+    create_transition('MainMenu', 'ReturnsAndRefunds', condition=is_returns_and_refunds),
+    create_transition('MainMenu', 'ProductInquiry', condition=is_product_inquiry),
+    create_transition('MainMenu', 'AccountManagement', condition=is_account_management),
+    create_transition('MainMenu', 'Goodbye', condition=is_exit_command),
+    create_transition('ReturnsAndRefunds', 'MainMenu'),
+    create_transition('ProductInquiry', 'MainMenu'),
+    create_transition('AccountManagement', 'MainMenu'),
 ]
 
 # Add transitions to the state machine
@@ -246,10 +274,10 @@ def handle_returns_and_refunds():
     return "I've initiated the return process for you. Please check your email for further instructions."
 
 def answer_product_inquiry():
-    return "The product you're interested in is available in multiple colors and sizes."
+    return "The product you asked about is in stock and available in various sizes."
 
 def assist_account_management():
-    return "Your account settings have been updated as per your request."
+    return "I've updated your account preferences as requested."
 
 def main():
     print(f"Current State: {state_machine.current_state.name}")
@@ -264,9 +292,11 @@ def main():
         # Before triggering transition, print current state
         print(f"\n[Before Transition] Current State: {state_machine.current_state.name}")
 
-        # Exit the loop if the user wants to quit
+        # Check if the user wants to exit
         if is_exit_command(user_input, state_machine):
+            # Transition to 'Goodbye' state
             state_machine.current_state = goodbye_state
+            state_machine.state_history.append(state_machine.current_state.name)
             print(state_machine.current_state.data.data['message'])
             break
 
@@ -274,22 +304,19 @@ def main():
 
         # After triggering transition, print new state
         print(f"[After Transition] Current State: {state_machine.current_state.name}")
-
-        # Update state history
-        state_machine.state_history.append(state_machine.current_state.name)
         print(f"State History: {' -> '.join(state_machine.state_history)}")
 
-        # After the transition, print the assistant's response
-        if state_machine.conversation_history:
-            last_turn = state_machine.conversation_history[-1]
-            assistant_response = last_turn.get('assistant_response', '')
-            if assistant_response:
-                print(f"Assistant: {assistant_response}")
-
         # Perform any actions associated with the current state
-        if state_machine.current_state.name == 'ProvideOrderStatus':
-            # Assume we stored the order_number in metadata
-            order_number = "123456"  # Replace with actual order number logic
+        if state_machine.current_state.name == 'OrderTracking':
+            print(state_machine.current_state.data.data['message'])
+        elif state_machine.current_state.name == 'CollectOrderNumber':
+            print(state_machine.current_state.data.data['message'])
+        elif state_machine.current_state.name == 'ProvideOrderStatus':
+            # Extract order number from user input or previous input
+            order_number = ''.join(filter(str.isdigit, user_input))
+            if not order_number:
+                # Attempt to retrieve from metadata
+                order_number = state_machine.current_state.data.metadata.custom_data.get('order_number', 'Unknown')
             status_message = fetch_order_status(order_number)
             print(f"Action: {status_message}")
         elif state_machine.current_state.name == 'ReturnsAndRefunds':
@@ -301,15 +328,15 @@ def main():
         elif state_machine.current_state.name == 'AccountManagement':
             result_message = assist_account_management()
             print(f"Action: {result_message}")
-        elif state_machine.current_state.name == 'Goodbye':
-            print(state_machine.current_state.data.data['message'])
-            break
+
+        # Provide the assistant's response if there is a message
+        if 'message' in state_machine.current_state.data.data:
+            print(f"Assistant: {state_machine.current_state.data.data['message']}")
 
     # Optionally, after exiting, print the final state history
     print("\nFinal State History:")
     print(" -> ".join(state_machine.state_history))
 
-# Run the main function
 if __name__ == '__main__':
     main()
 ```
