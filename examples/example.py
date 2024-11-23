@@ -88,7 +88,7 @@ goodbye_state = create_state('Goodbye', {
 
 # Create the state machine with a specified model client
 # Assume `model_client` is passed or created elsewhere in your application
-model_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+model_client = openai.OpenAI(api_key=api_key)
 state_machine = StateMachine(
     name='CustomerSupportAssistant',
     initial_state=welcome_state,
