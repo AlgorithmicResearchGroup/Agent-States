@@ -26,22 +26,22 @@ setup(
     ],
     python_requires=">=3.7",
     install_requires=[
-        "chromadb>=0.3.0,<1.0.0",
-        "openai>=0.27.0,<1.0.0",
-        "python-dotenv>=0.19.0,<1.0.0",
-        "numpy>=1.20.0,<2.0.0",
-        "pandas>=1.2.0,<2.0.0",
-        "tqdm>=4.60.0,<5.0.0",
-        "sentence-transformers>=2.0.0,<3.0.0",
-        "typing-extensions>=3.7.4,<5.0.0",
+        "chromadb",
+        "openai",
+        "python-dotenv",
+        "numpy",
+        "pandas",
+        "tqdm",
+        "sentence-transformers",
+        "typing-extensions",
     ],
     extras_require={
         "dev": [
-            "pytest>=6.2.0,<8.0.0",
-            "pytest-cov>=2.10.0,<4.0.0",
+            "pytest",
+            "pytest-cov",
         ],
         "viz": [
-            "graphviz>=0.16,<1.0.0",
+            "graphviz",
         ],
     },
 )
