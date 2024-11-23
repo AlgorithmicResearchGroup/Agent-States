@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="ai-agent-state",
-    version='0.1.13',
+    version='0.1.14',
     author="Algorithmic Research Group",
     author_email="matt@algorithmicresearchgroup.com",
     description="A library for managing state machines in AI agents",
